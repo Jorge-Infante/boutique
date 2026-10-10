@@ -151,7 +151,7 @@ td.r,th.r{text-align:right}
 .vrow .v-del{border:0;background:var(--crit-soft);color:var(--crit);border-radius:7px;height:34px;font-weight:700}
 .vrow .v-del:hover{background:#f6d6cf}
 
-.overlay{position:fixed;inset:0;background:rgba(32,24,36,.5);display:grid;place-items:center;padding:20px;z-index:50}
+.overlay{position:fixed;inset:0;background:rgba(32,24,36,.5);display:grid;place-items:center;padding:20px;z-index:10000}
 .modal{background:var(--surface);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.28);width:100%;max-width:480px;max-height:92vh;overflow:auto}
 .modal.wide{max-width:560px}
 .modal.detail{max-width:900px}
@@ -275,7 +275,10 @@ td.r,th.r{text-align:right}
   .page-head h1{font-size:22px}
   .picker{grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
   main{padding:16px}
-  .modal-foot{position:sticky;bottom:0;background:var(--surface)}
+  /* Deja aire abajo para que el badge flotante no tape los botones del modal */
+  .overlay{align-items:flex-start;padding:14px 14px 96px}
+  .modal,.modal.detail{max-height:calc(100vh - 120px)}
+  .modal-foot{position:sticky;bottom:0;background:var(--surface);box-shadow:0 -6px 16px rgba(42,34,48,.06)}
 }
 @media (max-width:380px){
   .kpis{grid-template-columns:1fr}
