@@ -33,6 +33,18 @@ export function totalStock(p) {
   return (p.variants || []).reduce((a, v) => a + (v.stock || 0), 0)
 }
 
+// ---------- Estado de la venta ----------
+export function isActiveSale(s) {
+  return (s.status || 'activa') === 'activa'
+}
+
+// Etiqueta corta para mostrar el estado de una venta descartada
+export function saleStatusLabel(s) {
+  if (s.status === 'devuelta') return 'Devuelta'
+  if (s.status === 'anulada') return 'Anulada'
+  return 'Activa'
+}
+
 // Lee un archivo de imagen y lo reduce a un data URL JPEG más liviano
 export function resizeImage(file, maxDim = 800) {
   return new Promise((resolve) => {

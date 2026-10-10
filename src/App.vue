@@ -17,6 +17,7 @@
     <ClientForm v-if="ui.modal === 'client'" />
     <ClientHistory v-if="ui.modal === 'clienthist'" />
     <Receipt v-if="ui.modal === 'receipt'" />
+    <VoidSale v-if="ui.modal === 'void'" />
     <Settings v-if="ui.modal === 'settings'" />
   </template>
 </template>
@@ -39,6 +40,7 @@ import ProductDetail from './components/ProductDetail.vue'
 import ClientForm from './components/ClientForm.vue'
 import ClientHistory from './components/ClientHistory.vue'
 import Receipt from './components/Receipt.vue'
+import VoidSale from './components/VoidSale.vue'
 import Settings from './components/Settings.vue'
 
 const session = ref(null)

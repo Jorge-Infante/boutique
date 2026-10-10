@@ -148,3 +148,15 @@ export async function createSale({ clientName, payment, totals, cart }) {
   await loadAll()
   return data // id de la venta
 }
+
+// Descarta una venta: devuelve el stock y la marca como devuelta/anulada.
+// reason: 'devolucion' | 'anulacion'
+export async function voidSale(id, reason, note = '') {
+  const { error } = await supabase.rpc('void_sale', {
+    p_sale_id: id,
+    p_reason: reason,
+    p_note: note || null,
+  })
+  if (error) throw error
+  await loadAll()
+}

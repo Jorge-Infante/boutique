@@ -53,7 +53,12 @@ create table if not exists sales (
   payment     text default 'Efectivo',
   subtotal    numeric not null default 0,
   discount    numeric not null default 0,
-  total       numeric not null default 0
+  total       numeric not null default 0,
+  -- Estado: 'activa' | 'devuelta' (cliente devolvió) | 'anulada' (error de registro)
+  status      text not null default 'activa',
+  void_reason text,          -- 'devolucion' | 'anulacion'
+  void_note   text,          -- nota libre opcional
+  voided_at   timestamptz
 );
 
 -- Ítems de cada venta
@@ -61,6 +66,7 @@ create table if not exists sale_items (
   id         bigint generated always as identity primary key,
   sale_id    bigint not null references sales(id) on delete cascade,
   product_id bigint references products(id) on delete set null,
+  variant_id bigint references variants(id) on delete set null,  -- para devolver stock exacto
   name       text not null,
   variant    text default '',
   price      numeric not null default 0,
@@ -112,10 +118,11 @@ begin
 
   for it in select * from jsonb_array_elements(p_items)
   loop
-    insert into sale_items(sale_id, product_id, name, variant, price, qty)
+    insert into sale_items(sale_id, product_id, variant_id, name, variant, price, qty)
     values (
       v_sale_id,
       nullif(it->>'product_id','')::bigint,
+      nullif(it->>'variant_id','')::bigint,
       it->>'name',
       coalesce(it->>'variant',''),
       (it->>'price')::numeric,
@@ -135,6 +142,63 @@ $$;
 
 revoke all on function create_sale(bigint,text,text,numeric,numeric,numeric,jsonb) from public;
 grant execute on function create_sale(bigint,text,text,numeric,numeric,numeric,jsonb) to authenticated;
+
+-- ---------- Descartar venta (devuelve stock + marca devuelta/anulada) ----------
+
+create or replace function void_sale(
+  p_sale_id bigint,
+  p_reason  text,          -- 'devolucion' | 'anulacion'
+  p_note    text default null
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_status text;
+  it       record;
+  v_var_id bigint;
+begin
+  select status into v_status from sales where id = p_sale_id for update;
+
+  if v_status is null then
+    raise exception 'La venta % no existe', p_sale_id;
+  end if;
+  if v_status <> 'activa' then
+    raise exception 'La venta % ya fue descartada', p_sale_id;
+  end if;
+  if p_reason not in ('devolucion', 'anulacion') then
+    raise exception 'Motivo inválido: %', p_reason;
+  end if;
+
+  for it in select * from sale_items where sale_id = p_sale_id
+  loop
+    v_var_id := it.variant_id;
+
+    if v_var_id is null and it.product_id is not null then
+      select v.id into v_var_id
+        from variants v
+        where v.product_id = it.product_id
+          and coalesce(nullif(concat_ws(' · ', nullif(v.talla,''), nullif(v.color,'')), ''), 'Única') = it.variant
+        limit 1;
+    end if;
+
+    if v_var_id is not null then
+      update variants set stock = stock + it.qty where id = v_var_id;
+    end if;
+  end loop;
+
+  update sales
+    set status      = case when p_reason = 'devolucion' then 'devuelta' else 'anulada' end,
+        void_reason = p_reason,
+        void_note   = p_note,
+        voided_at   = now()
+    where id = p_sale_id;
+end;
+$$;
+
+revoke all on function void_sale(bigint,text,text) from public;
+grant execute on function void_sale(bigint,text,text) to authenticated;
 
 -- ---------- Storage: políticas para el bucket 'product-photos' ----------
 -- (Primero crea el bucket PÚBLICO llamado  product-photos  en Storage)

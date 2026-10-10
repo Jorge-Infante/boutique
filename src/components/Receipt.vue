@@ -11,6 +11,10 @@
             <b>{{ store.settings.business_name || 'Mi Boutique' }}</b>
             <div style="font-size:12px;color:#666;font-family:ui-sans-serif,sans-serif">Comprobante de venta (control interno)</div>
           </div>
+          <div v-if="!isActiveSale(sale)" class="r-void">
+            {{ saleStatusLabel(sale).toUpperCase() }}
+            <span v-if="sale.void_note"> · {{ sale.void_note }}</span>
+          </div>
           <div class="r-meta"><span>Recibo <b>#{{ sale.id }}</b></span><span>{{ fdate(sale.created_at) }}</span></div>
           <div class="r-cli"><b>Cliente:</b> {{ sale.client_name || 'Mostrador' }} &nbsp;·&nbsp; <b>Pago:</b> {{ sale.payment || '—' }}</div>
           <table>
@@ -48,10 +52,18 @@
 import { computed } from 'vue'
 import { store } from '../store'
 import { ui, closeModal } from '../ui'
-import { fmt, fdate } from '../utils'
+import { fmt, fdate, isActiveSale, saleStatusLabel } from '../utils'
 import Modal from './Modal.vue'
 
 const sale = computed(() => store.sales.find(s => s.id === ui.modalData))
 
 function printIt() { window.print() }
 </script>
+
+<style scoped>
+.r-void {
+  margin:8px 0; padding:7px 10px; border:1.5px solid var(--crit, #c0392b);
+  color:var(--crit, #c0392b); border-radius:8px; text-align:center;
+  font-weight:800; letter-spacing:.06em; font-size:13px;
+}
+</style>

@@ -59,18 +59,20 @@
 import { computed } from 'vue'
 import { store } from '../store'
 import { go, openModal } from '../ui'
-import { fmt, fdate, vLabel, PH } from '../utils'
+import { fmt, fdate, vLabel, PH, isActiveSale } from '../utils'
 
 const today = new Date().toISOString().slice(0, 10)
 const month = today.slice(0, 7)
 
-const salesToday = computed(() => store.sales.filter(s => (s.created_at || '').slice(0, 10) === today))
-const salesMonth = computed(() => store.sales.filter(s => (s.created_at || '').slice(0, 7) === month))
+// Solo ventas activas cuentan para las métricas (las devueltas/anuladas no suman)
+const activeSales = computed(() => store.sales.filter(isActiveSale))
+const salesToday = computed(() => activeSales.value.filter(s => (s.created_at || '').slice(0, 10) === today))
+const salesMonth = computed(() => activeSales.value.filter(s => (s.created_at || '').slice(0, 7) === month))
 const totToday = computed(() => salesToday.value.reduce((a, s) => a + Number(s.total), 0))
 const totMonth = computed(() => salesMonth.value.reduce((a, s) => a + Number(s.total), 0))
 const cashToday = computed(() => salesToday.value.filter(s => s.payment === 'Efectivo').reduce((a, s) => a + Number(s.total), 0))
 const transfToday = computed(() => salesToday.value.filter(s => s.payment === 'Transferencia').reduce((a, s) => a + Number(s.total), 0))
-const recent = computed(() => store.sales.slice(0, 5))
+const recent = computed(() => activeSales.value.slice(0, 5))
 
 const lowRows = computed(() => {
   const out = []

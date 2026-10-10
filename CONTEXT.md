@@ -46,9 +46,12 @@ Para publicar un cambio: `git add -A && git commit -m "..." && git push` → Net
 - `clients`: name, phone, note.
 - `products`: name, category, price, min_stock, photos (text[] de URLs en Storage).
 - `variants`: product_id, talla, color, stock  (stock POR variante).
-- `sales`: client_id, client_name, payment (Efectivo/Transferencia), subtotal, discount, total.
-- `sale_items`: sale_id, product_id, name, variant, price, qty.
+- `sales`: client_id, client_name, payment (Efectivo/Transferencia), subtotal, discount, total,
+  **status** ('activa' | 'devuelta' | 'anulada'), void_reason, void_note, voided_at.
+- `sale_items`: sale_id, product_id, **variant_id**, name, variant, price, qty.
 - RPC `create_sale(...)`: inserta venta + ítems y **descuenta stock** de cada variante, atómico.
+- RPC `void_sale(id, reason, note)`: **descarta** una venta → devuelve el stock al inventario
+  y marca `status` (devuelta/anulada). Idempotente (falla si ya está descartada).
 - RLS: solo usuarios autenticados pueden leer/escribir.
 - Storage: bucket público **`product-photos`** (políticas en schema.sql).
 
@@ -79,6 +82,9 @@ src/components/
 - Nueva venta: catálogo → ficha → carrito, **descuento ($ o %)**, **método de pago**, cliente.
 - Clientes: datos + teléfono + **historial de compras** y total gastado.
 - Ventas: historial + **recibo imprimible/PDF** con logo.
+- **Descartar venta** (Devolución / Anulación): devuelve el stock, sale de las métricas del tablero
+  y del total gastado del cliente; la venta queda marcada (no se borra) y el recibo muestra el aviso.
+  ⚠️ **Requiere aplicar `supabase/migrations_devoluciones.sql`** en Supabase → SQL Editor una vez.
 - Ajustes: logo y nombre del negocio.
 - **Responsive/móvil:** menú hamburguesa (drawer), listados como **tarjetas** en celular,
   formularios en 1 columna, y fix para que el badge de Netlify no tape los botones del modal.
