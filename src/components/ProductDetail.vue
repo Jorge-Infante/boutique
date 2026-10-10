@@ -1,6 +1,6 @@
 <template>
-  <Modal klass="detail" @close="closeModal">
-    <div class="modal-head"><h3>Detalle de la prenda</h3><button class="x" @click="closeModal">×</button></div>
+  <Modal klass="detail" @close="emit('close')">
+    <div class="modal-head"><h3>Detalle de la prenda</h3><button class="x" @click="emit('close')">×</button></div>
     <div class="modal-body">
       <div class="det-grid">
         <div class="det-thumbs">
@@ -34,12 +34,18 @@
           </div>
 
           <div v-if="needColor || needSize" class="det-stock" style="color:var(--muted)">
-            Elige {{ [needColor ? 'color' : null, needSize ? 'talla' : null].filter(Boolean).join(' y ') }} para ver el stock.
+            Elige {{ [needColor ? 'color' : null, needSize ? 'talla' : null].filter(Boolean).join(' y ') }}
+            para ver {{ exactStock ? 'el stock' : 'si hay' }}.
           </div>
           <div v-else-if="variant && avail > 0" class="det-stock">
-            <b>Stock disponible</b> · {{ avail }} {{ avail === 1 ? 'unidad' : 'unidades' }}
+            <template v-if="exactStock"><b>Stock disponible</b> · {{ avail }} {{ avail === 1 ? 'unidad' : 'unidades' }}</template>
+            <template v-else-if="avail <= 3"><b>¡{{ avail === 1 ? 'Queda 1' : 'Quedan ' + avail }}!</b></template>
+            <template v-else><b>Disponible</b></template>
           </div>
-          <div v-else class="det-stock" style="color:var(--crit)"><b>Sin stock</b> para esta combinación.</div>
+          <div v-else class="det-stock" style="color:var(--crit)">
+            <template v-if="exactStock"><b>Sin stock</b> para esta combinación.</template>
+            <template v-else>No quedan más unidades de esta combinación.</template>
+          </div>
 
           <div class="det-qty"><span class="elbl">Cantidad</span>
             <div class="qty">
@@ -51,7 +57,7 @@
 
           <button class="btn primary block det-add" :disabled="!canAdd" @click="add">
             <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;stroke-width:1.9;fill:none"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
-            Agregar al carrito
+            {{ addLabel }}
           </button>
         </div>
       </div>
@@ -61,18 +67,23 @@
 
 <script setup>
 import { reactive, computed, watch } from 'vue'
-import { ui, closeModal, go } from '../ui'
-import { saleState, availForVariant, addToCart } from '../sale'
 import { fmt, colorHex, PH } from '../utils'
 import Modal from './Modal.vue'
 
-const p = ui.modalData
+// Ficha de la prenda (estilo Mercado Libre). La usan la tienda (carrito de la venta)
+// y el catálogo público (pedido de la clienta): cada uno pasa su disponibilidad.
+const props = defineProps({
+  product: { type: Object, required: true },
+  avail: { type: Function, required: true },     // unidades que aún se pueden agregar de una variante
+  addLabel: { type: String, default: 'Agregar al carrito' },
+  exactStock: { type: Boolean, default: true },  // false = catálogo público: sin cifras exactas
+})
+const emit = defineEmits(['add', 'close'])
+
+const p = props.product
 const photos = p.photos || []
 const colors = [...new Set(p.variants.map(v => v.color).filter(Boolean))]
 const sizes = [...new Set(p.variants.map(v => v.talla).filter(Boolean))]
-
-// eslint-disable-next-line no-unused-vars
-void saleState.cart  // mantiene reactividad de disponibilidad al cambiar el carrito
 
 const sel = reactive({
   color: colors.length === 1 ? colors[0] : '',
@@ -83,16 +94,16 @@ const sel = reactive({
 
 function colorAvail(c) {
   return p.variants.some(v => v.color === c &&
-    (!sizes.length || !sel.size || v.talla === sel.size) && availForVariant(p, v) > 0)
+    (!sizes.length || !sel.size || v.talla === sel.size) && props.avail(v) > 0)
 }
 function sizeAvail(t) {
   return p.variants.some(v => v.talla === t &&
-    (!colors.length || !sel.color || v.color === sel.color) && availForVariant(p, v) > 0)
+    (!colors.length || !sel.color || v.color === sel.color) && props.avail(v) > 0)
 }
 
 const variant = computed(() => p.variants.find(v =>
   (colors.length ? v.color === sel.color : true) && (sizes.length ? v.talla === sel.size : true)))
-const avail = computed(() => variant.value ? availForVariant(p, variant.value) : null)
+const avail = computed(() => variant.value ? props.avail(variant.value) : null)
 const needColor = computed(() => colors.length && !sel.color)
 const needSize = computed(() => sizes.length && !sel.size)
 const maxQ = computed(() => (variant.value && avail.value > 0) ? avail.value : 1)
@@ -106,9 +117,6 @@ function pickSize(t) { if (!sizeAvail(t) && sel.size !== t) return; sel.size = t
 function inc() { if (sel.qty < maxQ.value) sel.qty++ }
 function dec() { if (sel.qty > 1) sel.qty-- }
 function add() {
-  if (!canAdd.value) return
-  addToCart(p, variant.value, sel.qty)
-  closeModal()
-  go('sale')
+  if (canAdd.value) emit('add', variant.value, sel.qty)
 }
 </script>

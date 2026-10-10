@@ -16,7 +16,7 @@ export async function loadAll() {
     supabase.from('app_settings').select('*').eq('id', 1).maybeSingle(),
     supabase.from('clients').select('*').order('name'),
     supabase.from('products').select('*').order('name'),
-    supabase.from('variants').select('*'),
+    supabase.from('variants').select('*').order('id'),
     supabase.from('sales').select('*').order('created_at', { ascending: false }),
     supabase.from('sale_items').select('*'),
   ])
@@ -56,12 +56,14 @@ async function resolvePhotos(photos, folder) {
 }
 
 // ---------- Settings ----------
-export async function saveSettings({ business_name, logo_url }) {
+export async function saveSettings({ business_name, logo_url, whatsapp }) {
   const logo = logo_url && logo_url.startsWith('data:')
     ? await uploadDataUrl(logo_url, 'logo')
     : logo_url
-  const { error } = await supabase.from('app_settings')
-    .update({ business_name, logo_url: logo }).eq('id', 1)
+  const row = { business_name, logo_url: logo }
+  // La columna whatsapp llega con migrations_catalogo.sql; sin ella se guarda lo demás
+  if ('whatsapp' in store.settings) row.whatsapp = whatsapp || ''
+  const { error } = await supabase.from('app_settings').update(row).eq('id', 1)
   if (error) throw error
   await loadAll()
 }
@@ -101,13 +103,25 @@ export async function saveProduct(p) {
     if (error) throw error; id = data.id
   }
 
-  // Reemplaza las variantes del producto
-  await supabase.from('variants').delete().eq('product_id', id)
-  const vrows = (p.variants || []).map(v => ({
-    product_id: id, talla: v.talla || '', color: v.color || '', stock: v.stock || 0,
-  }))
-  if (vrows.length) {
-    const { error } = await supabase.from('variants').insert(vrows)
+  // Sincroniza las variantes CONSERVANDO sus ids (las ventas y los pedidos por enlace
+  // las referencian): borra solo las que se quitaron, actualiza las que siguen y
+  // agrega las nuevas.
+  const vrow = v => ({ talla: v.talla || '', color: v.color || '', stock: v.stock || 0 })
+  const kept = (p.variants || []).filter(v => v.id)
+  const added = (p.variants || []).filter(v => !v.id)
+
+  let removed = supabase.from('variants').delete().eq('product_id', id)
+  if (kept.length) removed = removed.not('id', 'in', `(${kept.map(v => v.id).join(',')})`)
+  const { error: delError } = await removed
+  if (delError) throw delError
+
+  const updates = await Promise.all(kept.map(v =>
+    supabase.from('variants').update(vrow(v)).eq('id', v.id).eq('product_id', id)))
+  const failed = updates.find(r => r.error)
+  if (failed) throw failed.error
+
+  if (added.length) {
+    const { error } = await supabase.from('variants').insert(added.map(v => ({ product_id: id, ...vrow(v) })))
     if (error) throw error
   }
   await loadAll()

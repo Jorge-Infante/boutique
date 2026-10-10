@@ -5,6 +5,11 @@
       <h1>Iniciar sesión</h1>
       <p>Ingresa para administrar tu inventario y ventas.</p>
 
+      <div v-if="orderPending" class="login-note">
+        Inicia sesión para cargar este pedido en una venta.
+        <a :href="CATALOG_PATH">¿Buscas el catálogo? Míralo aquí</a>
+      </div>
+
       <div v-if="!isConfigured" class="login-err">
         Falta conectar Supabase. Crea el archivo <b>.env.local</b> con tus llaves y reinicia <code>npm run dev</code>.
       </div>
@@ -28,6 +33,9 @@
 <script setup>
 import { ref } from 'vue'
 import { supabase, isConfigured } from '../supabase'
+import { CATALOG_PATH } from '../order'
+
+defineProps({ orderPending: { type: Boolean, default: false } })  // se abrió un enlace de pedido
 
 const email = ref('')
 const password = ref('')

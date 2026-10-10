@@ -58,7 +58,8 @@ const form = reactive({
   price: src?.price ?? '',
   min_stock: src?.min_stock ?? '',
   photos: src ? [...(src.photos || [])] : [],
-  variants: src ? src.variants.map(v => ({ talla: v.talla, color: v.color, stock: v.stock }))
+  // el id se conserva para no romper ventas ni pedidos que apuntan a la variante
+  variants: src ? src.variants.map(v => ({ id: v.id, talla: v.talla, color: v.color, stock: v.stock }))
                 : [{ talla: '', color: '', stock: 0 }],
 })
 const busy = ref(false)

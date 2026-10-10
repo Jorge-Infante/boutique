@@ -8,6 +8,11 @@ export function vLabel(v) {
   return [v.talla, v.color].filter(Boolean).join(' · ') || 'Única'
 }
 
+// Minúsculas y sin tildes, para comparar nombres y búsquedas
+export function norm(s) {
+  return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
 export function initials(name) {
   return (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w.charAt(0).toUpperCase()).join('')
 }

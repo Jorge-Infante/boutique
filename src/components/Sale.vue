@@ -3,7 +3,19 @@
     <div><h1>Nueva venta</h1><p>Toca una prenda para ver su ficha y elegir color/talla.</p></div>
   </div>
 
-  <div class="sale">
+  <div v-if="saleState.notice" class="order-note">
+    <div>
+      <b>Pedido del catálogo{{ saleState.notice.name ? ' · ' + saleState.notice.name : '' }}</b>
+      <div>{{ saleState.notice.units }} {{ saleState.notice.units === 1 ? 'prenda cargada' : 'prendas cargadas' }}.
+        Revisa, elige el método de pago y registra la venta.</div>
+      <ul v-if="saleState.notice.warnings.length">
+        <li v-for="(w, i) in saleState.notice.warnings" :key="i">{{ w }}</li>
+      </ul>
+    </div>
+    <button class="x" aria-label="Cerrar aviso" @click="saleState.notice = null">×</button>
+  </div>
+
+  <div class="sale" :class="{ 'from-order': saleState.fromOrder }">
     <div class="panel">
       <div style="padding:14px 16px 0">
         <input class="search" v-model="saleState.q" placeholder="Buscar prenda o categoría…" />
@@ -58,6 +70,7 @@
           <div style="display:flex;gap:6px">
             <select v-model="saleState.clientName" style="flex:1">
               <option value="Mostrador">Mostrador</option>
+              <option v-if="newClient" :value="saleState.clientName">{{ saleState.clientName }} (cliente nuevo)</option>
               <option v-for="c in store.clients" :key="c.id" :value="c.name">
                 {{ c.name }}{{ c.phone ? ' · ' + c.phone : '' }}
               </option>
@@ -89,6 +102,12 @@ const list = computed(() => {
     p.name.toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q))
 })
 const totals = computed(() => saleTotals())
+
+// Nombre que llegó en un pedido del catálogo y aún no es cliente: se crea al registrar
+const newClient = computed(() => {
+  const n = saleState.clientName
+  return n && n !== 'Mostrador' && !store.clients.some(c => c.name === n)
+})
 
 function left(p) {
   return (p.variants || []).reduce((a, v) => a + Math.max(0, availForVariant(p, v)), 0)

@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { norm } from './utils'
 
 // Estado de la venta en curso (compartido entre el catálogo, la ficha y el carrito)
 export const saleState = reactive({
@@ -7,6 +8,8 @@ export const saleState = reactive({
   pay: 'Efectivo',                // Efectivo | Transferencia
   clientName: 'Mostrador',
   q: '',                          // búsqueda
+  notice: null,                   // pedido que llegó del catálogo: { name, units, warnings }
+  fromOrder: false,               // la venta viene de un pedido del catálogo
 })
 
 export function resetSale() {
@@ -15,6 +18,39 @@ export function resetSale() {
   saleState.pay = 'Efectivo'
   saleState.clientName = 'Mostrador'
   saleState.q = ''
+  saleState.notice = null
+  saleState.fromOrder = false
+}
+
+// Carga en la venta un pedido que llegó por enlace del catálogo público.
+// Usa precios y stock actuales, y avisa lo que ya no está o no alcanza.
+export function loadOrder(order, products, clients) {
+  resetSale()
+  const warnings = []
+  let units = 0, gone = 0
+  for (const { vid, qty } of order.items) {
+    const p = products.find(x => (x.variants || []).some(v => v.id === vid))
+    const v = p && p.variants.find(x => x.id === vid)
+    if (!v) { gone++; continue }
+    const avail = availForVariant(p, v)
+    const label = `${p.name} (${labelOf(v)})`
+    if (avail <= 0) { warnings.push(`${label}: agotada.`); continue }
+    if (avail < qty) warnings.push(`${label}: pidió ${qty}, solo hay ${avail}.`)
+    addToCart(p, v, qty)
+    units += Math.min(qty, avail)
+  }
+  if (gone) warnings.push(gone === 1
+    ? 'Una prenda del pedido ya no está en el inventario.'
+    : `${gone} prendas del pedido ya no están en el inventario.`)
+
+  // Si la clienta ya existe (aunque la escriba sin tildes o en minúsculas), se usa esa
+  const name = order.name || ''
+  if (name) {
+    const known = clients.find(c => norm(c.name) === norm(name))
+    saleState.clientName = known ? known.name : name
+  }
+  saleState.notice = { name: name ? saleState.clientName : '', units, warnings }
+  saleState.fromOrder = true
 }
 
 export function cartQtyFor(pid, vid) {

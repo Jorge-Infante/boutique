@@ -10,6 +10,7 @@ create table if not exists app_settings (
   id            int primary key default 1,
   business_name text not null default 'Mi Boutique',
   logo_url      text,
+  whatsapp      text default '',   -- a donde llegan los pedidos del catálogo
   constraint single_row check (id = 1)
 );
 insert into app_settings (id) values (1) on conflict (id) do nothing;
@@ -141,6 +142,7 @@ end;
 $$;
 
 revoke all on function create_sale(bigint,text,text,numeric,numeric,numeric,jsonb) from public;
+revoke execute on function create_sale(bigint,text,text,numeric,numeric,numeric,jsonb) from anon;
 grant execute on function create_sale(bigint,text,text,numeric,numeric,numeric,jsonb) to authenticated;
 
 -- ---------- Descartar venta (devuelve stock + marca devuelta/anulada) ----------
@@ -198,7 +200,49 @@ end;
 $$;
 
 revoke all on function void_sale(bigint,text,text) from public;
+revoke execute on function void_sale(bigint,text,text) from anon;
 grant execute on function void_sale(bigint,text,text) to authenticated;
+
+-- (Supabase da EXECUTE a "anon" en las funciones nuevas, además de a PUBLIC: por eso
+--  create_sale y void_sale, que son security definer, se le revocan explícitamente.)
+
+-- ---------- Catálogo público (lo único que ve un visitante sin sesión) ----------
+-- Nombre, logo y WhatsApp de la tienda + prendas con stock (solo sus variantes con stock).
+
+create or replace function public_catalog()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'business', (
+      select jsonb_build_object('name', s.business_name, 'logo_url', s.logo_url, 'whatsapp', s.whatsapp)
+      from app_settings s
+      where s.id = 1
+    ),
+    'products', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', p.id,
+        'name', p.name,
+        'category', p.category,
+        'price', p.price,
+        'photos', p.photos,
+        'variants', (
+          select jsonb_agg(jsonb_build_object('id', v.id, 'talla', v.talla, 'color', v.color, 'stock', v.stock) order by v.id)
+          from variants v
+          where v.product_id = p.id and v.stock > 0
+        )
+      ) order by p.name)
+      from products p
+      where exists (select 1 from variants v where v.product_id = p.id and v.stock > 0)
+    ), '[]'::jsonb)
+  );
+$$;
+
+revoke all on function public_catalog() from public;
+grant execute on function public_catalog() to anon, authenticated;
 
 -- ---------- Storage: políticas para el bucket 'product-photos' ----------
 -- (Primero crea el bucket PÚBLICO llamado  product-photos  en Storage)
