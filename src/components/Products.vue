@@ -7,7 +7,8 @@
     </button>
   </div>
 
-  <div class="panel"><div class="table-wrap"><table>
+  <!-- Escritorio: tabla -->
+  <div class="panel list-desktop"><div class="table-wrap"><table>
     <thead><tr><th>Prenda</th><th>Categoría</th><th class="r">Precio</th><th class="r">Stock total</th><th class="r">Acciones</th></tr></thead>
     <tbody>
       <tr v-for="p in products" :key="p.id">
@@ -28,6 +29,25 @@
       <tr v-if="!products.length"><td class="empty" colspan="5">Sin prendas. Agrega la primera.</td></tr>
     </tbody>
   </table></div></div>
+
+  <!-- Móvil: tarjetas -->
+  <div class="cards">
+    <div class="card" v-for="p in products" :key="p.id">
+      <div class="card-top">
+        <img v-if="p.photos && p.photos[0]" class="thumb" :src="p.photos[0]" alt="" />
+        <div v-else class="thumb-ph">{{ PH }}</div>
+        <div class="meta"><b>{{ p.name }}</b><div class="cat">{{ p.category }}</div><div class="vsum">{{ summary(p) }}</div></div>
+        <span v-html="pill(p)"></span>
+      </div>
+      <div class="card-row"><span class="k">Precio</span><span class="num"><b>{{ fmt.format(p.price) }}</b></span></div>
+      <div class="card-actions">
+        <button class="btn sm" @click="openModal('detail', p)">Ver</button>
+        <button class="btn sm" @click="openModal('product', p)">Editar</button>
+        <button class="btn sm danger" @click="remove(p)">Eliminar</button>
+      </div>
+    </div>
+    <p v-if="!products.length" class="empty">Sin prendas. Agrega la primera.</p>
+  </div>
 </template>
 
 <script setup>

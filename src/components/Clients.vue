@@ -7,7 +7,8 @@
     </button>
   </div>
 
-  <div class="panel"><div class="table-wrap"><table>
+  <!-- Escritorio: tabla -->
+  <div class="panel list-desktop"><div class="table-wrap"><table>
     <thead><tr><th>Cliente</th><th>Teléfono</th><th>Compras</th><th class="r">Total gastado</th><th class="r">Acciones</th></tr></thead>
     <tbody>
       <tr v-for="c in clients" :key="c.id">
@@ -27,6 +28,27 @@
       <tr v-if="!clients.length"><td class="empty" colspan="5">Aún no hay clientes. Agrega el primero o se crean solos al vender.</td></tr>
     </tbody>
   </table></div></div>
+
+  <!-- Móvil: tarjetas -->
+  <div class="cards">
+    <div class="card" v-for="c in clients" :key="c.id">
+      <div class="card-top">
+        <div class="avatar">{{ initials(c.name) }}</div>
+        <div class="meta"><b>{{ c.name }}</b>
+          <div class="cat">📞 {{ c.phone || '—' }}</div>
+          <div v-if="c.note" class="cat">{{ c.note }}</div>
+        </div>
+      </div>
+      <div class="card-row"><span class="k">Compras</span><span>{{ stats(c.id).count }}</span></div>
+      <div class="card-row"><span class="k">Total gastado</span><span class="num"><b>{{ fmt.format(stats(c.id).total) }}</b></span></div>
+      <div class="card-actions">
+        <button class="btn sm" @click="openModal('clienthist', c.id)">Historial</button>
+        <button class="btn sm" @click="openModal('client', c)">Editar</button>
+        <button class="btn sm danger" @click="remove(c)">Eliminar</button>
+      </div>
+    </div>
+    <p v-if="!clients.length" class="empty">Aún no hay clientes. Agrega el primero o se crean solos al vender.</p>
+  </div>
 </template>
 
 <script setup>
