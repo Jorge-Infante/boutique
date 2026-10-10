@@ -18,7 +18,7 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 input,select{font-family:inherit;font-size:inherit}
 img{max-width:100%}
 
-.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh;align-content:start}
 .side{background:var(--ink);color:#E4DCE2;display:flex;flex-direction:column;
   padding:22px 16px;gap:4px;position:sticky;top:0;height:100vh}
 .brand{display:flex;align-items:center;gap:10px;padding:0 8px 20px}
