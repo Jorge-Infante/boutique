@@ -1,9 +1,28 @@
 <template>
-  <aside class="side no-print">
+  <!-- Barra superior (solo móvil) -->
+  <header class="topbar no-print">
+    <button class="burger" aria-label="Abrir menú" @click="menuOpen = true">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="tb-brand">
+      <div class="mark">
+        <img v-if="store.settings.logo_url" :src="store.settings.logo_url" alt="logo" />
+        <template v-else>{{ initial }}</template>
+      </div>
+      <b>{{ store.settings.business_name || 'Mi Boutique' }}</b>
+    </div>
+  </header>
+
+  <!-- Fondo oscuro al abrir el menú en móvil -->
+  <div v-if="menuOpen" class="side-overlay no-print" @click="menuOpen = false"></div>
+
+  <aside class="side no-print" :class="{ open: menuOpen }">
+    <button class="side-close" aria-label="Cerrar menú" @click="menuOpen = false">×</button>
+
     <div class="brand">
       <div class="mark">
         <img v-if="store.settings.logo_url" :src="store.settings.logo_url" alt="logo" />
-        <template v-else>{{ (store.settings.business_name || 'B').trim().charAt(0).toUpperCase() }}</template>
+        <template v-else>{{ initial }}</template>
       </div>
       <div>
         <b>{{ store.settings.business_name || 'Mi Boutique' }}</b>
@@ -12,13 +31,13 @@
     </div>
 
     <nav class="nav">
-      <button v-for="n in items" :key="n.v" :class="{ active: ui.view === n.v }" @click="go(n.v)">
+      <button v-for="n in items" :key="n.v" :class="{ active: ui.view === n.v }" @click="select(n.v)">
         <span v-html="n.icon"></span><span>{{ n.label }}</span>
       </button>
     </nav>
 
     <div class="side-foot">
-      <button @click="openModal('settings')">
+      <button @click="settings">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 7 2.6h.1A1.6 1.6 0 0 0 9 1.1V1a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 15 2.6h.1a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H23a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
         Logo y nombre
       </button>
@@ -31,9 +50,13 @@
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
 import { store } from '../store'
 import { ui, go, openModal } from '../ui'
 import { supabase } from '../supabase'
+
+const menuOpen = ref(false)
+const initial = computed(() => (store.settings.business_name || 'B').trim().charAt(0).toUpperCase())
 
 const items = [
   { v: 'dash', label: 'Tablero', icon: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>' },
@@ -43,7 +66,7 @@ const items = [
   { v: 'sales', label: 'Ventas', icon: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg>' },
 ]
 
-async function logout() {
-  await supabase.auth.signOut()
-}
+function select(v) { go(v); menuOpen.value = false }
+function settings() { openModal('settings'); menuOpen.value = false }
+async function logout() { menuOpen.value = false; await supabase.auth.signOut() }
 </script>
